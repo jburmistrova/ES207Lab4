@@ -96,6 +96,11 @@ count_santa <- sum(str_count(loc$`Site Name`, fixed("Santa")))
 count_santa
 subset_santa <- str_subset(loc$`Site Name`, fixed("Santa")) #35
 subset_santa 
+
+#Qingqing's suggestion to find the numbers of site names in the CA air quality location dataset “Site Name” contain “San” or “Santa”
+colnames(loc)[1] <- "site"
+toMatch <- c("San","Santa")
+sum(str_detect(unique(loc$`Site Name`), paste(toMatch,collapse="|")))
 ```
 9. Identify the number of sites that do not have a complete address (full street address and zip code).
 
