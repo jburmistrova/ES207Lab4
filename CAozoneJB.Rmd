@@ -1,0 +1,137 @@
+---
+title: "Lab 4 - CA Ozone Data"
+output:
+  pdf_document: default
+  html_notebook: default
+---
+
+
+```{r}
+
+library(tidyverse)
+library(stringr)
+library(htmlwidgets)
+library(readr)
+library(data.table)
+library(dplyr)
+library(lubridate)
+library(readxl)
+```
+
+```{r}
+
+o3.filenames <- list.files(pattern = ".txt") #Find all of the files in current location with .txt in the file name and create a list of these names.
+o3.filelist <- lapply(o3.filenames, read_delim, delim = "|") #Read in all of the delimited data from the text files in the list to create a list of dataframes.
+
+names(o3.filelist) <- gsub(".txt","", o3.filenames) #Remove the file extensions by replacing the names of the dataframes in the large list with the filenames from the initial where a blank was substituted as the .txt extension.
+
+summary(o3.filelist)
+head(o3.filelist)
+```
+
+2. What class is o3.filelist? What does it contain?
+* o3.filelist is a large list containing all of the tibble dataframes created from delimited data in the text files organized, by text-file name.
+
+3. Using ~ 1 sentence per line in the above code, explain what each line in the code is doing.
+* See comments by code above.
+
+4. Rewrite the code above using the stringr package instead of grep{base}
+* grep{base} - gsub can be replaced with str_split:
+
+```{r}
+names(o3.filelist) <- str_split(o3.filenames, ".txt")[[1]]
+```
+
+5. Rewrite the code below using traditional object-based R programming instead of the piping operator.
+
+```{r}
+#to compare and contrast
+daily <- o3.filelist %>%
+  rbindlist() %>%
+  group_by(site = as.factor(site), date) %>%
+  summarize(o3 = mean(obs, na.rm = TRUE))
+head(daily)
+
+#without piping, which takes up more RAM (as discussed in office hours, so this will be commented out once I know it works)
+#daily_new <- o3.filelist
+#daily_rbindlist <- rbindlist(daily_new)
+#daily_group_by <-  group_by(daily_rbindlist, site = as.factor(site), date)
+#daily_summarize <- summarize(daily_group_by, o3 = mean(obs, na.rm = TRUE))
+#head(daily_summarize)
+#success
+```
+
+6. Summarize the o3 data above by site and by month and by year using a piping operator (the monthly mean o3 for each site for each year).
+
+```{r}
+monthly <- o3.filelist %>%
+  rbindlist() %>%
+  group_by(month=floor_date(date, "month")) %>% #code from below link
+  group_by(site = as.factor(site), month) %>% #changed date from above to month
+  summarize(o3 = mean(obs, na.rm = TRUE))
+monthly
+#I have no idea if I succeeded
+#code from https://ro-che.info/articles/2017-02-22-group_by_month_r
+```
+7. Challenge! Ozone pollution actually follows a very strong diurnal pattern. How would you summarize the daily data from above in a better way to capture that diurnal pattern?
+* diurnal means twice a day, like a tide
+* one way I could do it is to look at two 12 hour sections of the data and compare - 12 hours of morning and 12 hours of night
+
+8. How many site names in the CA air quality location dataset “Site Name” contain “San” or “Santa?”
+
+* Chapter 14, here we gooooo
+
+```{r}
+loc <- read_excel("/Users/robertgatdula/Documents/ES207DataAnalysis/Lab4/location.xls")
+loc
+  
+
+subset_san <- str_subset(loc$`Site Name`, "San") #100
+subset_san 
+count_san <- sum(str_count(loc$`Site Name`, "San"))
+count_san
+
+
+count_santa <- sum(str_count(loc$`Site Name`, fixed("Santa")))
+count_santa
+subset_santa <- str_subset(loc$`Site Name`, fixed("Santa")) #35
+subset_santa 
+```
+9. Identify the number of sites that do not have a complete address (full street address and zip code).
+
+```{r}
+zipcode_check <- str_count(loc$`Zip Code`, "[0-9]{5}") %>%
+  replace_na(0) %>%
+  sum()
+zipcode_check
+total_zipcodes_missing <- length(loc$`Zip Code`) - zipcode_check #154
+
+check_address <- str_count(loc$Address, "^\\d+\\s[A-z]+\\s[A-z]+") %>%
+  replace_na(0) %>%
+  sum()
+check_address
+total_address_missing <- length(loc$Address) - check_address #557
+
+#need to check if there is overlap
+
+```
+
+10. How does a semi join differ from an inner join?
+*From notes:
+ - Inner join inner_join() - returns all rows from x where there are matching values in y, and all columns from x and y
+ - Semi join semi_join() - returns all rows from x where there are matching values in y, keeping just columns from x
+ - it appears that inner_join keeps both columns, but semi_join gives you just x
+ - semi_join looks like it would be helpful if you want to get just one of the columns, which could be helpful if you just want the street addresses but not the zipcodes, for example
+
+```{r}
+colnames(loc)[1] <- "site"
+daily.site <- daily %>%
+  left_join(loc, by = "site")
+daily.site
+``` 
+ 
+11. Write a function to calculate the annual mean, median, max and min of all sites that have “San” or “Santa” in their name.
+* Did not have time to complete
+
+12. Write a function to caculate the annual daily mean. Apply that function to Merced County. What is the annual daily mean of o3 for Merced County?
+* Did not have time to complete
